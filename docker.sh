@@ -41,30 +41,32 @@ docker pull nezha123/titan-edge
 current_port=$start_port
 
 for ip in $public_ips; do
-    echo -e "${GREEN}Setting up node for IP $ip${NC}"
+  echo -e "${GREEN}Setting up node for IP ${ip}${NC}"
 
     for ((i=1; i<=container_count; i++))
     do
-        storage_path="/root/titan_storage_${ip}_${i}"
+        storage_path="/root/titan_storage_[${ip}]_${i}"
 
         mkdir -p "$storage_path"
 
-        container_id=$(docker run -d --restart always -v "$storage_path:/root/.titanedge/storage" --name "titan_${ip}_${i}" --net=host nezha123/titan-edge)
+         container_id=$(docker run -d --restart always \
+      -v "$storage_path:/root/.titanedge/storage" \
+      --name "titan_[${ip}_${i}]" \
+      --net=host nezha123/titan-edge)
 
-        echo -e "${GREEN}Node titan_${ip}_${i} is running with container ID $container_id${NC}"
+        echo -e "${GREEN}Node titan_[${ip}_${i}] is running with container ID ${container_id}${NC}"
+    sleep 30
 
-        sleep 30
-
-        docker exec $container_id bash -c "\
-            sed -i 's/^[[:space:]]*#StorageGB = .*/StorageGB = $storage_gb/' /root/.titanedge/config.toml && \
-            sed -i 's/^[[:space:]]*#ListenAddress = \"0.0.0.0:1234\"/ListenAddress = \"0.0.0.0:$current_port\"/' /root/.titanedge/config.toml && \
-            echo 'Storage for node titan_${ip}_${i} set to $storage_gb GB, Port set to $current_port'"
-
+        docker exec $container_id bash -c "
+      sed -i 's/^#StorageGB.*/StorageGB = $storage_gb/' /root/.titanedge/config.toml && \
+      sed -i 's/^#ListenAddress.*/ListenAddress = \"0.0.0.0:$current_port\"/' /root/.titanedge/config.toml" && \
+            echo "Storage for node titan_[${ip}_${i}] set to $storage_gb GB, Port set to $current_port"
+    
         docker restart $container_id
 
         docker exec $container_id bash -c "\
             titan-edge bind --hash=$id https://api-test1.container1.titannet.io/api/v2/device/binding"
-        echo -e "${GREEN}Node titan_${ip}_${i} has been bound.${NC}"
+        echo -e "${GREEN}Node titan_[${ip}_${i}] has been bound.${NC}"
 
         current_port=$((current_port + 1))
     done
